@@ -698,6 +698,105 @@ add_action( 'plugins_loaded', function() {
             );
         }
 
+        /**
+         * Create VisioFex customer and order to prefill checkout
+         */
+        private function create_visiofex_order( $order ) {
+            $this->log( 'Creating VisioFex order for WC order #' . $order->get_id() );
+            
+            // Step 1: Create/Find Customer
+            $customer_data = array(
+                'vendorID' => $this->vendor_id,
+                'firstName' => $order->get_billing_first_name(),
+                'lastName' => $order->get_billing_last_name(),
+                'email' => $order->get_billing_email(),
+                'phoneNumber' => $order->get_billing_phone() ?: null,
+                'address' => array(
+                    'line1' => $order->get_billing_address_1(),
+                    'city' => $order->get_billing_city(),
+                    'region' => $order->get_billing_state(),
+                    'country' => $order->get_billing_country(),
+                    'zipcode' => $order->get_billing_postcode()
+                )
+            );
+            
+            $this->log( 'Creating customer for: ' . $customer_data['email'] );
+            
+            $customer_response = $this->request( 'POST', 'customers/create', $customer_data );
+            
+            if ( $customer_response['code'] < 200 || $customer_response['code'] >= 300 ) {
+                $this->log( 'Failed to create customer: ' . wp_json_encode( $customer_response['body'] ), 'error' );
+                return false;
+            }
+            
+            $customer_id = $customer_response['body']['data']['customer']['_id'] ?? null;
+            if ( ! $customer_id ) {
+                $this->log( 'No customer ID returned from API', 'error' );
+                return false;
+            }
+            
+            $this->log( 'Customer created/found with ID: ' . $customer_id );
+            
+            // Step 2: Create Order - Just send total as single line item
+            $total = number_format( $order->get_total(), 2 );
+            
+            $order_data = array(
+                'customerID' => $customer_id,
+                'customer' => array(
+                    'firstName' => $order->get_billing_first_name(),
+                    'lastName' => $order->get_billing_last_name(),
+                    'email' => $order->get_billing_email(),
+                    'phoneNumber' => $order->get_billing_phone() ?: null,
+                    'address' => $order->get_formatted_billing_address(),
+                    'phone' => $order->get_billing_phone() ?: null
+                ),
+                'lineItems' => array(
+                    array(
+                        'sku' => 'Order Total',
+                        'quantity' => 1,
+                        'unitPrice' => floatval( $total ),
+                        'subtotal' => $total
+                    )
+                ),
+                'subtotal' => $total,
+                'discounts' => array(),
+                'fees' => array(),
+                'tax' => array(),
+                'postDiscountsSubtotal' => $total,
+                'postFeesSubtotal' => $total,
+                'total' => $total,
+                'orderMessage' => $order->get_customer_note() ?: null,
+                'orderAttachments' => array()
+            );
+            
+            $this->log( 'Creating order with total: $' . $total );
+            
+            $visiofex_response = $this->request( 'POST', 'orders/create', $order_data );
+            
+            if ( $visiofex_response['code'] < 200 || $visiofex_response['code'] >= 300 ) {
+                $this->log( 'Failed to create VisioFex order: ' . wp_json_encode( $visiofex_response['body'] ), 'error' );
+                return false;
+            }
+            
+            $visiofex_order_id = $visiofex_response['body']['data']['order']['_id'] ?? null;
+            if ( ! $visiofex_order_id ) {
+                $this->log( 'No VisioFex order ID returned from API', 'error' );
+                return false;
+            }
+            
+            // Store the VisioFex order ID for later reference
+            $order->update_meta_data( '_visiofex_order_id', $visiofex_order_id );
+            $order->update_meta_data( '_visiofex_customer_id', $customer_id );
+            $order->save();
+            
+            $this->log( 'VisioFex order created successfully with ID: ' . $visiofex_order_id );
+            
+            return array(
+                'customer_id' => $customer_id,
+                'order_id' => $visiofex_order_id
+            );
+        }
+
         public function process_payment( $order_id ) {
             // Input validation
             if ( ! is_numeric( $order_id ) || $order_id <= 0 ) {
@@ -737,6 +836,15 @@ add_action( 'plugins_loaded', function() {
             $order_total = floatval( $order->get_total() );
             
             $this->log( 'Testing empty line items approach - Line items count: ' . count( $line_items ) . ', WC Total: ' . $order_total );
+            
+            // Create VisioFex order to prefill customer data
+            $visiofex_order = $this->create_visiofex_order( $order );
+            if ( ! $visiofex_order ) {
+                $this->log( 'Warning: Failed to create VisioFex order for prefill, continuing with checkout session', 'warning' );
+                // Don't fail the payment, just log the issue
+            } else {
+                $this->log( 'VisioFex order created for prefill - Customer ID: ' . $visiofex_order['customer_id'] . ', Order ID: ' . $visiofex_order['order_id'] );
+            }
             
             $order_key = $order->get_order_key();
             // Validate and sanitize URLs
@@ -1078,6 +1186,29 @@ add_action( 'woocommerce_blocks_loaded', function() {
 
 register_activation_hook( __FILE__, function() {} );
 register_deactivation_hook( __FILE__, function() {} );
+
+// Load admin reports helper
+if ( file_exists( VXF_WC_PLUGIN_DIR . 'includes/class-visiofex-reports.php' ) ) {
+    require_once VXF_WC_PLUGIN_DIR . 'includes/class-visiofex-reports.php';
+    // Instantiate reports helper after WooCommerce is loaded
+    add_action( 'woocommerce_loaded', function() {
+        // Only instantiate in admin to avoid front-end overhead
+        if ( is_admin() && ! wp_doing_ajax() ) {
+            // Debug logging
+            if ( function_exists( 'wc_get_logger' ) ) {
+                $logger = wc_get_logger();
+                $logger->info( 'Loading VisioFex_Reports class via woocommerce_loaded', array( 'source' => 'visiofex' ) );
+            }
+            new VisioFex_Reports(); // Constructor will get the key from gateway settings
+        }
+    } );
+} else {
+    // Debug logging for missing file
+    if ( function_exists( 'wc_get_logger' ) ) {
+        $logger = wc_get_logger();
+        $logger->error( 'VisioFex Reports class file not found at: ' . VXF_WC_PLUGIN_DIR . 'includes/class-visiofex-reports.php', array( 'source' => 'visiofex' ) );
+    }
+}
 
 add_action( 'woocommerce_admin_order_data_after_order_details', 'vxf_admin_order_panel', 10, 1 );
 
