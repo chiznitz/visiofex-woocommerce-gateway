@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: VisioFex/KonaCash API for WooCommerce
+  title: VisioFex API for WooCommerce
   description: |
-    API documentation for VisioFex/KonaCash payment gateway integration with WooCommerce.
+    API documentation for VisioFex payment gateway integration with WooCommerce.
     This API enables hosted checkout sessions, payment processing, and refund management.
 
     ## Configuration Required

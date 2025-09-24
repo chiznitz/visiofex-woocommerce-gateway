@@ -1,4 +1,4 @@
-# VisioFex/KonaCash API Documentation
+# VisioFex API Documentation
 
 This directory contains comprehensive API documentation for the VisioFex/KonaCash payment gateway integration with WooCommerce.
 
