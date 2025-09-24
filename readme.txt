@@ -7,7 +7,7 @@ Stable tag: 1.5.7
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Hosted checkout session for VisioFex/KonaCash with refunds and WooCommerce Blocks support.
+Hosted checkout session for VisioFex with refunds and WooCommerce Blocks support.
 
 == Description ==
 - **Complete Order Integration**: Forwards all order components to VisioFex including products, coupon discounts, shipping, fees, and taxes
