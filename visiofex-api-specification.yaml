@@ -1,0 +1,521 @@
+openapi: 3.0.3
+info:
+  title: VisioFex/KonaCash API for WooCommerce
+  description: |
+    API documentation for VisioFex/KonaCash payment gateway integration with WooCommerce.
+    This API enables hosted checkout sessions, payment processing, and refund management.
+
+    ## Configuration Required
+    Before using this API, you must obtain credentials from the VisioFex portal:
+    - **Secret Key**: Used in the X-API-KEY header for authentication
+    - **Vendor ID**: Your App ID, required for checkout session creation
+    - **Store Domain**: Your website URL for return URLs
+
+    Get your credentials at: https://visiofex.com/login → Developer → New App
+  version: "1.0.0"
+  contact:
+    name: NexaFlow Payments
+    url: https://nexaflowpayments.com
+
+servers:
+  - url: https://api.konacash.com/v1
+    description: Production server
+  - url: https://api.konacash.com/v1
+    description: Test server (same endpoint, controlled by env parameter)
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /checkout/sessions/create:
+    post:
+      summary: Create a hosted checkout session
+      description: |
+        Creates a new hosted checkout session for payment processing.
+        The session includes order details, URLs for success/return/cancel flows,
+        and metadata for tracking.
+      operationId: createCheckoutSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vendor
+                - env
+                - currency
+                - amount
+                - successURL
+                - returnURL
+                - cancelURL
+              properties:
+                vendor:
+                  type: string
+                  description: Vendor/App ID from VisioFex portal (found under Developer → New App)
+                  example: "your-app-id"
+                env:
+                  type: string
+                  enum: [test, live]
+                  description: Environment mode
+                  example: "live"
+                mode:
+                  type: string
+                  enum: [payment]
+                  description: Transaction mode
+                  default: "payment"
+                  example: "payment"
+                currency:
+                  type: string
+                  description: Three-letter currency code (lowercase)
+                  example: "usd"
+                amount:
+                  type: string
+                  description: Total order amount (formatted to 2 decimal places)
+                  example: "99.99"
+                lineItems:
+                  type: array
+                  description: Array of order line items
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Item name
+                        example: "Premium Widget"
+                      quantity:
+                        type: integer
+                        description: Quantity ordered
+                        example: 2
+                      unitPrice:
+                        type: string
+                        description: Unit price per item
+                        example: "49.99"
+                      totalPrice:
+                        type: string
+                        description: Total price for this line item
+                        example: "99.98"
+                      sku:
+                        type: string
+                        description: Stock keeping unit
+                        example: "WIDGET-001"
+                      type:
+                        type: string
+                        enum: [product, shipping, fee, discount]
+                        description: Type of line item
+                        example: "product"
+                successURL:
+                  type: string
+                  format: uri
+                  description: URL to redirect after successful payment
+                  example: "https://store.com/checkout/order-received/123/"
+                returnURL:
+                  type: string
+                  format: uri
+                  description: URL for "back to store" button (checkout page)
+                  example: "https://store.com/checkout/"
+                cancelURL:
+                  type: string
+                  format: uri
+                  description: URL for cancelled payments
+                  example: "https://store.com/checkout/order-received/123/?cancel_order=true&order=wc_order_123&order_key=wc_order_456"
+                metadata:
+                  type: object
+                  description: Additional order metadata for tracking
+                  properties:
+                    order_id:
+                      type: string
+                      description: WooCommerce order ID
+                      example: "123"
+                    site_url:
+                      type: string
+                      format: uri
+                      description: Store home URL
+                      example: "https://store.com"
+                    wc_total:
+                      type: number
+                      description: WooCommerce calculated total
+                      example: 99.99
+                    calculated_total:
+                      type: number
+                      description: Plugin-calculated total
+                      example: 99.99
+                    coupon_count:
+                      type: integer
+                      description: Number of coupons applied
+                      example: 1
+                    has_shipping:
+                      type: boolean
+                      description: Whether order has shipping
+                      example: true
+      responses:
+        '200':
+          description: Checkout session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                            description: Unique session identifier
+                            example: "sess_1234567890abcdef"
+                          status:
+                            type: string
+                            enum: [pending, active, completed, expired, cancelled]
+                            description: Current session status
+                            example: "active"
+                      paymentURL:
+                        type: string
+                        format: uri
+                        description: URL where customer should be redirected to complete payment
+                        example: "https://checkout.konacash.com/pay/sess_1234567890abcdef"
+                      requestID:
+                        type: string
+                        description: Unique request identifier for tracking
+                        example: "req_abcdef1234567890"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /checkout/sessions/{sessionId}:
+    get:
+      summary: Get checkout session details
+      description: Retrieves detailed information about a specific checkout session.
+      operationId: getCheckoutSession
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The session ID to retrieve
+          example: "sess_1234567890abcdef"
+      responses:
+        '200':
+          description: Session details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /transactions:
+    get:
+      summary: Get transactions by session
+      description: Retrieves transaction details for a specific session.
+      operationId: getTransactionsBySession
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Session ID to filter transactions
+          example: "sess_1234567890abcdef"
+      responses:
+        '200':
+          description: Transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+
+  /transactions/{transactionId}:
+    get:
+      summary: Get transaction details
+      description: Retrieves detailed information about a specific transaction.
+      operationId: getTransaction
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID to retrieve
+          example: "txn_1234567890abcdef"
+      responses:
+        '200':
+          description: Transaction details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /refunds:
+    get:
+      summary: Get refunds by transaction
+      description: Retrieves all refunds associated with a specific transaction.
+      operationId: getRefundsByTransaction
+      parameters:
+        - name: transactionId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Transaction ID to filter refunds
+          example: "txn_1234567890abcdef"
+      responses:
+        '200':
+          description: Refunds retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Refund'
+
+  /transactions/{paymentId}/refund:
+    post:
+      summary: Process a refund
+      description: |
+        Processes a refund for a completed transaction.
+        Refunds can be partial or full amounts.
+      operationId: processRefund
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The payment/transaction ID to refund
+          example: "txn_1234567890abcdef"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payment_id
+                - amount
+              properties:
+                payment_id:
+                  type: string
+                  description: Payment ID (same as URL parameter)
+                  example: "txn_1234567890abcdef"
+                amount:
+                  type: string
+                  description: Refund amount (formatted to 2 decimal places)
+                  example: "25.00"
+                reason:
+                  type: string
+                  description: Reason for the refund (must be one of the predefined values)
+                  enum: [requested_by_customer, duplicate, fraudulent]
+                  example: "requested_by_customer"
+      responses:
+        '200':
+          description: Refund processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Refund'
+        '400':
+          description: Bad request - invalid refund amount or transaction status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: API key from VisioFex portal
+
+  schemas:
+    Session:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Unique session identifier
+          example: "sess_1234567890abcdef"
+        status:
+          type: string
+          enum: [pending, active, completed, expired, cancelled]
+          description: Current session status
+        amount:
+          type: string
+          description: Session amount
+          example: "99.99"
+        currency:
+          type: string
+          description: Session currency
+          example: "usd"
+        createdAt:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+        expiresAt:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+
+    Transaction:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Unique transaction identifier
+          example: "txn_1234567890abcdef"
+        sessionId:
+          type: string
+          description: Associated session ID
+          example: "sess_1234567890abcdef"
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, cancelled, refunded, partially_refunded]
+          description: Transaction status
+        amount:
+          type: string
+          description: Transaction amount
+          example: "99.99"
+        currency:
+          type: string
+          description: Transaction currency
+          example: "usd"
+        paymentMethod:
+          type: object
+          description: Payment method details
+          properties:
+            type:
+              type: string
+              description: Payment method type
+              example: "card"
+            last4:
+              type: string
+              description: Last 4 digits of card
+              example: "4242"
+            brand:
+              type: string
+              description: Card brand
+              example: "visa"
+        refunds:
+          type: array
+          description: Associated refunds
+          items:
+            $ref: '#/components/schemas/Refund'
+        createdAt:
+          type: string
+          format: date-time
+          description: Transaction creation timestamp
+        paidAt:
+          type: string
+          format: date-time
+          description: Transaction completion timestamp
+
+    Refund:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Unique refund identifier
+          example: "ref_1234567890abcdef"
+        transactionId:
+          type: string
+          description: Associated transaction ID
+          example: "txn_1234567890abcdef"
+        amount:
+          type: string
+          description: Refund amount
+          example: "25.00"
+        currency:
+          type: string
+          description: Refund currency
+          example: "usd"
+        reason:
+          type: string
+          description: Refund reason (predefined values only)
+          enum: [requested_by_customer, duplicate, fraudulent]
+          example: "requested_by_customer"
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed]
+          description: Refund status
+        createdAt:
+          type: string
+          format: date-time
+          description: Refund creation timestamp
+        processedAt:
+          type: string
+          format: date-time
+          description: Refund processing timestamp
+
+    Error:
+      type: object
+      properties:
+        error:
+          oneOf:
+            - type: string
+            - type: object
+          description: Error message or object
+          example: "Invalid API key"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The provided API key is invalid"
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_API_KEY"

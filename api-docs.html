@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisioFex/KonaCash API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+        .endpoint {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        .method.POST { background: #28a745; color: white; }
+        .method.GET { background: #007bff; color: white; }
+        .endpoint h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+        }
+        .path {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .schema {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+        }
+        .schema h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .property {
+            margin-bottom: 8px;
+            padding-left: 10px;
+        }
+        .property .name {
+            font-weight: bold;
+            color: #495057;
+        }
+        .property .type {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .property .required {
+            color: #dc3545;
+            font-size: 0.8em;
+        }
+        .response {
+            margin-top: 15px;
+            padding: 10px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+        }
+        .response.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .response.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .code {
+            font-family: 'Courier New', monospace;
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .auth-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .auth-notice strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VisioFex/KonaCash API</h1>
+        <p>WooCommerce Payment Gateway Integration</p>
+    </div>
+
+    <div class="auth-notice">
+        <strong>🔐 Authentication:</strong> All API requests require the <code>X-API-KEY</code> header with your secret key from the VisioFex portal.<br>
+        <strong>⚙️ Configuration:</strong> The <code>vendor</code> field requires your App ID from the VisioFex portal (found under Developer → New App).
+    </div>
+
+    <div class="endpoint">
+        <span class="method POST">POST</span>
+        <h3>Create Checkout Session</h3>
+        <div class="path">/checkout/sessions/create</div>
+        <div class="description">
+            Creates a new hosted checkout session for payment processing. The session includes order details, URLs for success/return/cancel flows, and metadata for tracking.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-1')">Request</div>
+            <div class="tab" onclick="showTab(this, 'response-1')">Response</div>
+        </div>
+
+        <div id="request-1" class="tab-content active">
+            <div class="schema">
+                <h4>Request Body (application/json)</h4>
+                <div class="property">
+                    <span class="name">vendor</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Vendor/App ID from VisioFex portal (found under Developer → New App)
+                </div>
+                <div class="property">
+                    <span class="name">env</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Environment: "test" or "live"
+                </div>
+                <div class="property">
+                    <span class="name">currency</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Three-letter currency code (lowercase)
+                </div>
+                <div class="property">
+                    <span class="name">amount</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Total order amount (formatted to 2 decimal places)
+                </div>
+                <div class="property">
+                    <span class="name">successURL</span> <span class="type">string</span> <span class="required">required</span><br>
+                    URL to redirect after successful payment
+                </div>
+                <div class="property">
+                    <span class="name">returnURL</span> <span class="type">string</span> <span class="required">required</span><br>
+                    URL for "back to store" button (checkout page)
+                </div>
+                <div class="property">
+                    <span class="name">cancelURL</span> <span class="type">string</span> <span class="required">required</span><br>
+                    URL for cancelled payments
+                </div>
+                <div class="property">
+                    <span class="name">lineItems</span> <span class="type">array</span><br>
+                    Array of order line items (products, shipping, fees, etc.)
+                </div>
+                <div class="property">
+                    <span class="name">metadata</span> <span class="type">object</span><br>
+                    Additional order metadata for tracking
+                </div>
+            </div>
+
+            <div class="code">{
+  "vendor": "your-app-id",
+  "env": "live",
+  "currency": "usd",
+  "amount": "99.99",
+  "successURL": "https://store.com/checkout/order-received/123/",
+  "returnURL": "https://store.com/checkout/",
+  "cancelURL": "https://store.com/checkout/order-received/123/?cancel_order=true",
+  "lineItems": [
+    {
+      "name": "Premium Widget",
+      "quantity": 2,
+      "unitPrice": "49.99",
+      "totalPrice": "99.98",
+      "sku": "WIDGET-001",
+      "type": "product"
+    }
+  ],
+  "metadata": {
+    "order_id": "123",
+    "site_url": "https://store.com",
+    "wc_total": 99.99,
+    "coupon_count": 1,
+    "has_shipping": true
+  }
+}</div>
+        </div>
+
+        <div id="response-1" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": {
+    "session": {
+      "_id": "sess_1234567890abcdef",
+      "status": "active"
+    },
+    "paymentURL": "https://checkout.konacash.com/pay/sess_1234567890abcdef",
+    "requestID": "req_abcdef1234567890"
+  }
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <span class="method GET">GET</span>
+        <h3>Get Session Details</h3>
+        <div class="path">/checkout/sessions/{sessionId}</div>
+        <div class="description">
+            Retrieves detailed information about a specific checkout session.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-2')">Parameters</div>
+            <div class="tab" onclick="showTab(this, 'response-2')">Response</div>
+        </div>
+
+        <div id="request-2" class="tab-content active">
+            <div class="schema">
+                <h4>Path Parameters</h4>
+                <div class="property">
+                    <span class="name">sessionId</span> <span class="type">string</span> <span class="required">required</span><br>
+                    The session ID to retrieve
+                </div>
+            </div>
+        </div>
+
+        <div id="response-2" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": {
+    "session": {
+      "_id": "sess_1234567890abcdef",
+      "status": "completed",
+      "amount": "99.99",
+      "currency": "usd",
+      "createdAt": "2025-09-23T10:30:00Z",
+      "expiresAt": "2025-09-23T11:30:00Z"
+    }
+  }
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <span class="method GET">GET</span>
+        <h3>Get Transactions by Session</h3>
+        <div class="path">/transactions?sessionId={sessionId}</div>
+        <div class="description">
+            Retrieves transaction details for a specific session.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-3')">Parameters</div>
+            <div class="tab" onclick="showTab(this, 'response-3')">Response</div>
+        </div>
+
+        <div id="request-3" class="tab-content active">
+            <div class="schema">
+                <h4>Query Parameters</h4>
+                <div class="property">
+                    <span class="name">sessionId</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Session ID to filter transactions
+                </div>
+            </div>
+        </div>
+
+        <div id="response-3" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": [
+    {
+      "_id": "txn_1234567890abcdef",
+      "sessionId": "sess_1234567890abcdef",
+      "status": "succeeded",
+      "amount": "99.99",
+      "currency": "usd",
+      "paymentMethod": {
+        "type": "card",
+        "last4": "4242",
+        "brand": "visa"
+      },
+      "createdAt": "2025-09-23T10:35:00Z",
+      "paidAt": "2025-09-23T10:36:00Z"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <span class="method GET">GET</span>
+        <h3>Get Transaction Details</h3>
+        <div class="path">/transactions/{transactionId}</div>
+        <div class="description">
+            Retrieves detailed information about a specific transaction.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-4')">Parameters</div>
+            <div class="tab" onclick="showTab(this, 'response-4')">Response</div>
+        </div>
+
+        <div id="request-4" class="tab-content active">
+            <div class="schema">
+                <h4>Path Parameters</h4>
+                <div class="property">
+                    <span class="name">transactionId</span> <span class="type">string</span> <span class="required">required</span><br>
+                    The transaction ID to retrieve
+                </div>
+            </div>
+        </div>
+
+        <div id="response-4" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": {
+    "_id": "txn_1234567890abcdef",
+    "sessionId": "sess_1234567890abcdef",
+    "status": "succeeded",
+    "amount": "99.99",
+    "currency": "usd",
+    "paymentMethod": {
+      "type": "card",
+      "last4": "4242",
+      "brand": "visa"
+    },
+    "refunds": [],
+    "createdAt": "2025-09-23T10:35:00Z",
+    "paidAt": "2025-09-23T10:36:00Z"
+  }
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <span class="method GET">GET</span>
+        <h3>Get Refunds by Transaction</h3>
+        <div class="path">/refunds?transactionId={transactionId}</div>
+        <div class="description">
+            Retrieves all refunds associated with a specific transaction.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-5')">Parameters</div>
+            <div class="tab" onclick="showTab(this, 'response-5')">Response</div>
+        </div>
+
+        <div id="request-5" class="tab-content active">
+            <div class="schema">
+                <h4>Query Parameters</h4>
+                <div class="property">
+                    <span class="name">transactionId</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Transaction ID to filter refunds
+                </div>
+            </div>
+        </div>
+
+        <div id="response-5" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": [
+    {
+      "_id": "ref_1234567890abcdef",
+      "transactionId": "txn_1234567890abcdef",
+      "amount": "25.00",
+      "currency": "usd",
+      "reason": "Customer requested return",
+      "status": "succeeded",
+      "createdAt": "2025-09-23T14:30:00Z",
+      "processedAt": "2025-09-23T14:31:00Z"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <span class="method POST">POST</span>
+        <h3>Process Refund</h3>
+        <div class="path">/transactions/{paymentId}/refund</div>
+        <div class="description">
+            Processes a refund for a completed transaction. Refunds can be partial or full amounts.
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab(this, 'request-6')">Request</div>
+            <div class="tab" onclick="showTab(this, 'response-6')">Response</div>
+        </div>
+
+        <div id="request-6" class="tab-content active">
+            <div class="schema">
+                <h4>Path Parameters</h4>
+                <div class="property">
+                    <span class="name">paymentId</span> <span class="type">string</span> <span class="required">required</span><br>
+                    The payment/transaction ID to refund
+                </div>
+            </div>
+
+            <div class="schema">
+                <h4>Request Body (application/json)</h4>
+                <div class="property">
+                    <span class="name">payment_id</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Payment ID (same as URL parameter)
+                </div>
+                <div class="property">
+                    <span class="name">amount</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Refund amount (formatted to 2 decimal places)
+                </div>
+                <div class="property">
+                    <span class="name">reason</span> <span class="type">string</span> <span class="required">required</span><br>
+                    Reason for the refund (must be one of: requested_by_customer, duplicate, fraudulent)
+                </div>
+            </div>
+
+            <div class="code">{
+  "payment_id": "txn_1234567890abcdef",
+  "amount": "25.00",
+  "reason": "requested_by_customer"
+}</div>
+        </div>
+
+        <div id="response-6" class="tab-content">
+            <div class="response success">
+                <strong>200 Success</strong>
+                <div class="code">{
+  "data": {
+    "_id": "ref_1234567890abcdef",
+    "transactionId": "txn_1234567890abcdef",
+    "amount": "25.00",
+    "currency": "usd",
+    "reason": "requested_by_customer",
+    "status": "succeeded",
+    "createdAt": "2025-09-23T14:30:00Z",
+    "processedAt": "2025-09-23T14:31:00Z"
+  }
+}</div>
+            </div>
+
+            <div class="response error">
+                <strong>400 Bad Request</strong>
+                <div class="code">{
+  "error": "Invalid refund amount"
+}</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(clickedTab, contentId) {
+            // Remove active class from all tabs in this endpoint
+            const tabs = clickedTab.parentNode.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Add active class to clicked tab
+            clickedTab.classList.add('active');
+
+            // Hide all tab content in this endpoint
+            const contents = clickedTab.parentNode.parentNode.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Show the selected tab content
+            document.getElementById(contentId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
