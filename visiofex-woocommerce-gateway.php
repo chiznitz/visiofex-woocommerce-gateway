@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.5.6
+ * Version:     1.5.7
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.5.6' );
+define( 'VXF_WC_VERSION', '1.5.7' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -783,7 +783,7 @@ add_action( 'plugins_loaded', function() {
                 $order->save();
 
                 $payment_url = esc_url_raw( $body['data']['paymentURL'] );
-                $this->log( 'Payment process successful - Redirecting to: ' . $payment_url );
+                $this->log( 'Session creation successful - Redirecting customer to payment portal: ' . $payment_url );
 
                 return array(
                     'result'   => 'success',
@@ -1389,12 +1389,14 @@ if ( ! function_exists( 'visiofex_batch_auto_sync_orders' ) ) {
         $hours = (int) get_option( 'visiofex_auto_sync_hours', 24 );
         if ( $hours < 1 ) { $hours = 1; }
         if ( $hours > 48 ) { $hours = 48; }
-        $cutoff_gmt = gmdate( 'Y-m-d H:i:s', time() - ( $hours * 3600 ) );
         
-        // $cutoff_gmt = gmdate( 'Y-m-d H:i:s', time() - ( $hours * 60 ) ); // Uses minutes instead of hours
+        // Calculate cutoff in site's local timezone (not UTC) to match WooCommerce order date storage
+        $cutoff_local = date( 'Y-m-d H:i:s', time() - ( $hours * 3600 ) );
+        
+        // $cutoff_local = date( 'Y-m-d H:i:s', time() - ( $hours * 60 ) ); // Uses minutes instead of hours
 
         // Start log for visibility
-        visiofex_log( 'Auto-sync: scan start (window=' . $hours . 'h, cutoff=' . $cutoff_gmt . ')' );
+        visiofex_log( 'Auto-sync: scan start (window=' . $hours . 'h, cutoff=' . $cutoff_local . ' local time)' );
 
         // Query recent pending/on-hold orders with session id but no transaction id
         $args = array(
@@ -1403,7 +1405,7 @@ if ( ! function_exists( 'visiofex_batch_auto_sync_orders' ) ) {
             'orderby'      => 'date',
             'order'        => 'DESC',
             'payment_method' => 'visiofex',
-            'date_created' => '>' . $cutoff_gmt,
+            'date_created' => '>' . $cutoff_local,
             'return'       => 'objects',
         );
         

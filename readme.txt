@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.5.6
+Stable tag: 1.5.7
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,12 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.5.7 =
+* **CRITICAL FIX**: Fixed autosync timezone issue that was causing orders in wrong timezone to be processed
+* **TIMEZONE**: Changed autosync cutoff calculation from UTC to site local timezone to properly match WooCommerce order dates
+* **IMPROVED**: Autosync now correctly respects WordPress site timezone settings instead of always using UTC
+* **RELIABILITY**: Fixed issue where 1-hour autosync would incorrectly find "future" orders due to timezone mismatch
 
 = 1.5.6 =
 * **CRITICAL FIX**: Fixed "back to store" button on VisioFex payment portal - now correctly returns to checkout page instead of order received page
