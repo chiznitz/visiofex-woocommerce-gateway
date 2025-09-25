@@ -80,24 +80,25 @@
         
         return null;
     }
+    function extractRedirectUrl(responseData) {
         if (!responseData || !responseData.payment_result) {
             return null;
         }
-        
+
         if (responseData.payment_result.redirect_url) {
             return responseData.payment_result.redirect_url;
         }
-        
+
         if (Array.isArray(responseData.payment_result.payment_details)) {
             var redirectDetail = responseData.payment_result.payment_details.find(function(detail) {
                 return detail.key === 'redirect';
             });
             return redirectDetail ? redirectDetail.value : null;
         }
-        
+
         return null;
     }
-    
+
     var originalFetch = window.fetch;
     window.fetch = function() {
         var url = arguments[0] && arguments[0].toString();
